@@ -1,0 +1,5 @@
+venv
+.env*
+!.env.example
+cert.p12
+__pycache__
