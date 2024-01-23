@@ -3,3 +3,5 @@ venv
 !.env.example
 cert.p12
 __pycache__
+tmp/*
+!.gitkeep

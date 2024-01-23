@@ -1,2 +1,5 @@
 pynubank
 notion-client
+pandas
+pyarrow
+streamlit

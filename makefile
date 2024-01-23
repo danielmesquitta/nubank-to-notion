@@ -3,7 +3,7 @@
 default: start
 
 start:
-	@dotenv venv/bin/python __main__.py
+	@dotenv venv/bin/streamlit run __main__.py
 auth:
 	@venv/bin/pynubank
 install:

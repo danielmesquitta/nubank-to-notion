@@ -5,25 +5,26 @@ from datetime import datetime
 
 class NotionClient:
   NOTION_TOKEN = os.getenv('NOTION_TOKEN')
+  NOTION_PAGE_ID = os.getenv('NOTION_PAGE_ID')
   notion_colors = ['gray', 'brown', 'orange',
                    'yellow', 'green', 'blue', 'purple', 'pink', 'red']
 
   def __init__(self):
-    self.notion = AsyncClient(auth=NotionClient.NOTION_TOKEN)
+    self.notion = AsyncClient(auth=self.NOTION_TOKEN)
 
-  @staticmethod
-  def generate_financial_database_title():
-    current_date = datetime.now()
-    return current_date.strftime("%b/%Y")
+  def __gen_select_options(self, options: list[str]) -> list[dict]:
+    options_list = []
 
-  async def create_financial_database(self, categories: list[str]) -> dict:
-    page_id = "2c19ae4a-c6ca-400d-b59a-37f1f1fe6ba9"
-    category_options = []
+    for index, option in enumerate(options):
+      index = index % len(self.notion_colors)
+      options_list.append(
+          {"name": option, "color": self.notion_colors[index]})
 
-    for index, category in enumerate(categories):
-      index = index % len(NotionClient.notion_colors)
-      category_options.append(
-          {"name": category, "color": NotionClient.notion_colors[index]})
+    return options_list
+
+  async def create_financial_database(self, title: str, categories: list[str], payment_methods: list[str]) -> dict:
+    category_options = self.__gen_select_options(categories)
+    payment_method_options = self.__gen_select_options(payment_methods)
 
     database_schema = {
         "Data": {
@@ -39,13 +40,16 @@ class NotionClient:
             "select": {
                 "options": category_options
             }
-        }
+        },
+        "Método de pagamento": {
+            "select": {
+                "options": payment_method_options
+            }
+        },
     }
 
-    title = self.generate_financial_database_title()
-
     response = await self.notion.databases.create(
-        parent={"page_id": page_id},
+        parent={"page_id": self.NOTION_PAGE_ID},
         icon={"type": "emoji", "emoji": "💵"},
         title=[{
             "type": "text",
@@ -58,7 +62,15 @@ class NotionClient:
 
     return response
 
-  async def add_row_to_financial_database(self, database_id: str, date: datetime, name: str, price: float, category: str) -> dict:
+  async def add_row_to_financial_database(
+          self,
+          database_id: str,
+          date: datetime,
+          name: str,
+          price: float,
+          category: str | None = None,
+          payment_method: str | None = None
+  ) -> dict:
     new_page_data = {
         "parent": {"database_id": database_id},
         "properties": {
@@ -82,16 +94,26 @@ class NotionClient:
                 "select": {
                     "name": category
                 }
+            },
+            "Método de pagamento": {
+                "select": {
+                    "name": payment_method
+                }
             }
         }
     }
+
+    if category is None:
+      del new_page_data["properties"]["Categoria"]
+
+    if payment_method is None:
+      del new_page_data["properties"]["Método de pagamento"]
 
     response = await self.notion.pages.create(**new_page_data)
 
     return response
 
-  async def find_financial_database(self) -> dict | None:
-    title = self.generate_financial_database_title()
+  async def find_financial_database(self, title: str) -> dict | None:
     response = await self.notion.search(query=title)
     results: list = response["results"]
 
