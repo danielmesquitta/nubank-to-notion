@@ -5,9 +5,8 @@ from datetime import datetime
 
 class NotionClient:
   NOTION_TOKEN = os.getenv('NOTION_TOKEN')
-  NOTION_PAGE_ID = os.getenv('NOTION_PAGE_ID')
-  notion_colors = ['gray', 'brown', 'orange',
-                   'yellow', 'green', 'blue', 'purple', 'pink', 'red']
+  colors = ['gray', 'brown', 'orange',
+            'yellow', 'green', 'blue', 'purple', 'pink', 'red']
 
   def __init__(self):
     self.notion = AsyncClient(auth=self.NOTION_TOKEN)
@@ -16,13 +15,35 @@ class NotionClient:
     options_list = []
 
     for index, option in enumerate(options):
-      index = index % len(self.notion_colors)
+      index = index % len(self.colors)
       options_list.append(
-          {"name": option, "color": self.notion_colors[index]})
+          {"name": option, "color": self.colors[index]})
 
     return options_list
 
-  async def create_financial_database(self, title: str, categories: list[str], payment_methods: list[str]) -> dict:
+  async def create_page(self, page_id: str, title: str) -> dict:
+    new_page = await self.notion.pages.create(
+        parent={"page_id": page_id},
+        properties={
+            "title": {
+                "title": [
+                    {
+                        "text": {
+                            "content": title
+                        }
+                    }
+                ]
+            }
+        },
+        icon={
+            "type": "emoji",
+            "emoji": "💵"
+        },
+    )
+
+    return new_page
+
+  async def create_financial_database(self, page_id: str, title: str, categories: list[str], payment_methods: list[str]) -> dict:
     category_options = self.__gen_select_options(categories)
     payment_method_options = self.__gen_select_options(payment_methods)
 
@@ -49,7 +70,7 @@ class NotionClient:
     }
 
     response = await self.notion.databases.create(
-        parent={"page_id": self.NOTION_PAGE_ID},
+        parent={"page_id": page_id},
         icon={"type": "emoji", "emoji": "💵"},
         title=[{
             "type": "text",
@@ -57,7 +78,8 @@ class NotionClient:
                 "content": title
             }
         }],
-        properties=database_schema
+        properties=database_schema,
+        is_inline=True
     )
 
     return response
@@ -112,14 +134,3 @@ class NotionClient:
     response = await self.notion.pages.create(**new_page_data)
 
     return response
-
-  async def find_financial_database(self, title: str) -> dict | None:
-    response = await self.notion.search(query=title)
-    results: list = response["results"]
-
-    if results and len(results) > 0:
-      for result in results:
-        if result["object"] == "database" and result["archived"] == False:
-          return result
-
-    return None

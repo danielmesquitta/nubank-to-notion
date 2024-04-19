@@ -3,3 +3,5 @@ notion-client
 pandas
 pyarrow
 streamlit
+matplotlib
+pillow
